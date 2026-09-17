@@ -181,10 +181,11 @@ function CameraRig({ view, reducedMotion }) {
   const keys = useRef(new Set());
   const target = useMemo(() => new THREE.Vector3(), []);
   const mobile = size.width <= 600;
-  const baseZoom = Math.min(size.width / (mobile ? 27 : 35), size.height / 27);
+  const compact = mobile && size.height <= 700;
+  const baseZoom = Math.min(size.width / (mobile ? 27 : 35), size.height / (compact ? 50 : 27));
   useLayoutEffect(() => {
-    camera.current.setViewOffset(size.width, size.height, mobile ? 0 : -size.width * 0.1, -size.height * (mobile ? 0.14 : 0.04), size.width, size.height);
-  }, [size.width, size.height, mobile]);
+    camera.current.setViewOffset(size.width, size.height, mobile ? 0 : -size.width * 0.1, -size.height * (compact ? 0.17 : mobile ? 0.14 : 0.04), size.width, size.height);
+  }, [size.width, size.height, mobile, compact]);
   useEffect(() => { transition.current = true; }, [view, size.width, size.height]);
   useEffect(() => {
     const down = event => { if (!['INPUT', 'TEXTAREA', 'BUTTON'].includes(event.target.tagName) && !document.querySelector('dialog[open]') && ['w', 'a', 's', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.key)) { keys.current.add(event.key); transition.current = false; event.preventDefault(); } };
@@ -200,7 +201,7 @@ function CameraRig({ view, reducedMotion }) {
       const place = PLACES[view] || PLACES.explore;
       target.set(place[0], view === 'explore' ? 0.1 : place[1], place[2]);
       const old = c.target.clone(); c.target.lerp(target, reducedMotion ? 1 : 1 - Math.exp(-delta * 2.3)); camera.current.position.add(c.target.clone().sub(old));
-      const zoom = baseZoom * (view === 'explore' ? 1 : 1.62);
+      const zoom = baseZoom * (view === 'explore' ? 1 : mobile ? 1.2 : 1.62);
       camera.current.zoom = THREE.MathUtils.damp(camera.current.zoom, zoom, 2.3, delta); camera.current.updateProjectionMatrix();
       if (c.target.distanceTo(target) < 0.02 && Math.abs(camera.current.zoom - zoom) < 0.02) transition.current = false;
     }

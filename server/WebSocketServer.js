@@ -15,16 +15,31 @@ const securityHeaders = {
   'Content-Security-Policy': "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' ws: wss:; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
 };
 
-export function createHavenServer({ allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean), heartbeatMs = 30_000 } = {}) {
+export function createHavenServer({ allowedOrigins = (process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean), heartbeatMs = 30_000, serveStatic = true, trustProxy = false } = {}) {
   const lanterns = new Map();
   const peers = new Map();
+  const socketPaths = new Set(['/ws', '/api/ws']);
+  const requestPath = req => { try { return new URL(req.url, 'http://localhost').pathname; } catch { return ''; } };
+  const acceptsOrigin = req => {
+    const origin = req.headers.origin;
+    if (!origin) return true;
+    try {
+      const forwardedHost = trustProxy ? String(req.headers['x-forwarded-host'] || '').split(',')[0].trim() : '';
+      return allowedOrigins.includes(origin) || (allowedOrigins.length === 0 && new URL(origin).host === (forwardedHost || req.headers.host));
+    } catch { return false; }
+  };
   const server = http.createServer(async (req, res) => {
     Object.entries(securityHeaders).forEach(([k, v]) => res.setHeader(k, v));
-    if (req.url === '/health') {
+    if (requestPath(req) === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
       return res.end(JSON.stringify({ status: 'ok' }));
     }
     if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405); return res.end(); }
+    if (socketPaths.has(requestPath(req))) {
+      res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      return res.end(req.method === 'HEAD' ? undefined : JSON.stringify({ status: 'ok', service: 'echo-haven', protocol: 1 }));
+    }
+    if (!serveStatic) { res.writeHead(404); return res.end('Not found'); }
     try {
       const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
       let file = path.resolve(root, '.' + pathname);
@@ -44,10 +59,7 @@ export function createHavenServer({ allowedOrigins = (process.env.ALLOWED_ORIGIN
   const publicLantern = ({ id, createdAt, hue }) => ({ id, createdAt, hue });
 
   server.on('upgrade', (req, socket, head) => {
-    const origin = req.headers.origin;
-    let accepted = !origin;
-    try { accepted ||= allowedOrigins.includes(origin) || (allowedOrigins.length === 0 && new URL(origin).host === req.headers.host); } catch { /* Reject malformed origins. */ }
-    if (req.url !== '/ws' || !accepted || peers.size >= 500) { socket.write('HTTP/1.1 403 Forbidden\r\n\r\n'); socket.destroy(); return; }
+    if (!socketPaths.has(requestPath(req)) || !acceptsOrigin(req) || peers.size >= 500) { socket.write('HTTP/1.1 403 Forbidden\r\n\r\n'); socket.destroy(); return; }
     wss.handleUpgrade(req, socket, head, ws => wss.emit('connection', ws));
   });
 

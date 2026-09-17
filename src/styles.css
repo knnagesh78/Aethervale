@@ -3,14 +3,15 @@
 @theme { --font-sans: 'DM Sans', sans-serif; --font-serif: 'Cormorant Garamond', Georgia, serif; }
 :root { font-family: 'DM Sans', sans-serif; color: #405247; background: #dce5d7; font-synthesis: none; font-weight: 400; -webkit-font-smoothing: antialiased; --ink: #405247; --muted: #798476; --line: #52664a24; --serif: 'Cormorant Garamond', Georgia, serif; }
 * { box-sizing: border-box; }
-body { margin: 0; min-width: 320px; }
+html, body, #root { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+body { min-width: 0; }
 button, textarea { font: inherit; }
 button { cursor: pointer; color: inherit; border: 0; background: none; -webkit-tap-highlight-color: transparent; }
 button:disabled { cursor: default; }
 button:focus-visible, textarea:focus-visible { outline: 2px solid #587756; outline-offset: 5px; }
 button { touch-action: manipulation; }
 button, a { -webkit-user-select: none; user-select: none; }
-.haven-app { width: 100%; height: 100svh; min-height: 680px; position: relative; overflow: hidden; isolation: isolate; background: #dce5d7; }
+.haven-app { width: 100%; height: 100svh; min-height: 0; position: relative; overflow: hidden; isolation: isolate; background: #dce5d7; }
 .world { position: absolute; inset: 0; z-index: 0; touch-action: none; }
 .world canvas { display: block; }
 .world-wash { position: absolute; z-index: 1; inset: 0; pointer-events: none; background: linear-gradient(180deg, #edf0df4d 0%, transparent 18%, transparent 74%, #e8eadd9e 100%), radial-gradient(ellipse at 0 30%, #e7ebde96 0%, transparent 42%); }
@@ -47,6 +48,9 @@ h1 em { font-weight: 400; color: #657957; }
 .presence-note { display: flex; align-items: center; gap: 8px; margin-top: 26px; color: #78856e; font-size: 10px; letter-spacing: 0.1px; }
 .presence-dot { height: 5px; width: 5px; border-radius: 50%; background: #829a6c; box-shadow: 0 0 0 4px #80976812; }
 .presence-dot.connecting, .presence-dot.offline { background: #b3a578; }
+.presence-dot.unavailable { background: #b3a578; }
+.reconnect-button { display: inline-flex; align-items: center; gap: 4px; padding: 5px 7px; border-radius: 12px; background: #f2f3e4b3; color: #526149; pointer-events: auto; flex-shrink: 0; }
+.connection-help .reconnect-button { display: flex; margin-top: 7px; border: 1px solid #aabb9244; }
 .weather-control { position: absolute; top: 126px; right: 4.6%; z-index: 20; }
 .weather-control button { display: flex; gap: 9px; align-items: center; font-size: 10px; color: #73816c; padding: 8px; }
 .weather-mood { color: #87917e; font-size: 9px; }.weather-separator { opacity: 0.4; padding: 0 4px; }
@@ -100,7 +104,7 @@ textarea::placeholder { color: #9ba18d; }textarea:focus { border-color: #899d74;
 @media (max-width: 1100px) { .header-note { display: none; }.rest-note { min-width: auto; }.rest-note small { display: none; }.rest-note { max-width: 170px; font-size: 10px; }.view-hint { font-size: 9px; }.view-hint small { max-width: 105px; }.sanctuary-nav button { padding: 0 13px; }.scene-caption { display: none; }h1 { font-size: 57px; }.intro { left: 5%; top: 20%; }.bottom-hud { left: 4%; right: 4%; } }
 @media (max-width: 850px) { .rest-note, .view-hint { display: none; }.bottom-hud { height: 56px; bottom: 80px; }.intro { top: 17%; }h1 { font-size: 54px; }.intro > p { font-size: 11px; }.weather-control { top: 108px; }.weather-mood, .weather-separator { display: none; }.site-header { height: 90px; }.haven-dialog { margin: auto 5% auto auto; } }
 @media (max-width: 600px) {
-  .haven-app { min-height: 650px; }.site-header { height: 83px; padding: 0 22px; }.brand { gap: 6px; }.brand > span { font-size: 25px; letter-spacing: -0.9px; }.brand svg { width: 31px; }.header-actions { gap: 7px; }.sound-button { padding: 10px; border: 1px solid #8799762e; }.sound-button > span { display: none; }.help-button { width: 32px; }.header-note { display: none; }
+  .site-header { height: 83px; padding: 0 22px; }.brand { gap: 6px; }.brand > span { font-size: 25px; letter-spacing: -0.9px; }.brand svg { width: 31px; }.header-actions { gap: 7px; }.sound-button { padding: 10px; border: 1px solid #8799762e; }.sound-button > span { display: none; }.help-button { width: 32px; }.header-note { display: none; }
   .intro { top: 16%; left: 28px; }.intro-eyebrow { font-size: 7px; letter-spacing: 1.9px; gap: 8px; }.little-star { font-size: 15px; }h1 { font-size: 49px; letter-spacing: -1.9px; margin: 18px 0 14px; }.intro > p { font-size: 10px; line-height: 1.85; }.presence-note { margin-top: 18px; font-size: 8px; }
   .world { inset: 0; }.sun-halo { right: 15%; top: 27%; width: 46px; height: 46px; }.weather-control { top: 90px; right: 20px; }.weather-control button { font-size: 8px; gap: 5px; }.weather-control svg { width: 13px; }.world-wash { background: linear-gradient(180deg, #e3e9dc80 0%, #e3e9dc00 42%, transparent 75%, #e8eaddb3 100%); }.loading-scene { left: 50%; top: 60%; }
   .place-label { padding: 6px 8px 6px 6px; font-size: 8px; gap: 5px; }.place-dot { width: 20px; height: 20px; }.place-arrow { display: none; }.place-dot svg { width: 11px; }
@@ -108,5 +112,14 @@ textarea::placeholder { color: #9ba18d; }textarea:focus { border-color: #899d74;
   .site-footer { left: 25px; right: 25px; bottom: 28px; justify-content: center; }.site-footer > span:first-child { display: none; }.site-footer > span:last-child { font-size: 8px; gap: 9px; }
   .haven-dialog { margin: auto; width: calc(100% - 36px); max-width: 370px; padding: 28px; border-radius: 20px; max-height: calc(100svh - 36px); }.haven-dialog h2 { font-size: 32px; }.toast { top: 88px; font-size: 10px; padding: 12px 16px; }.scene-fallback { inset: 30% 20% 20%; padding: 20px; }.scene-fallback h2 { font-size: 26px; }
 }
-@media (max-height: 740px) and (min-width: 601px) { .haven-app { min-height: 600px; }.intro { top: 19%; }h1 { font-size: 54px; }.intro > p { font-size: 10px; }.presence-note { margin-top: 18px; }.bottom-hud { bottom: 77px; }.site-footer { bottom: 22px; }.site-header { height: 88px; }.weather-control { top: 100px; } }
+@media (max-height: 740px) and (min-width: 601px) { .intro { top: 19%; }h1 { font-size: 54px; }.intro > p { font-size: 10px; }.presence-note { margin-top: 18px; }.bottom-hud { bottom: 77px; }.site-footer { bottom: 22px; }.site-header { height: 88px; }.weather-control { top: 100px; } }
+@media (max-width: 600px) and (max-height: 700px) {
+  .site-header { height: 63px; padding-inline: 16px; }.brand > span { font-size: 22px; }.brand svg { width: 27px; }.header-actions { gap: 4px; }.sound-button { padding: 8px; }
+  .intro { top: 90px; left: 22px; max-width: calc(100% - 44px); }h1 { font-size: 38px; line-height: 1; margin: 11px 0; letter-spacing: -1.3px; }.intro > p { font-size: 10px; line-height: 1.6; }.presence-note { margin-top: 12px; font-size: 8px; line-height: 1.6; }
+  .weather-control { top: 65px; right: 18px; }.bottom-hud { bottom: max(35px, env(safe-area-inset-bottom)); height: 52px; left: 10px; right: 10px; }.sanctuary-nav button { padding: 0 8px; gap: 5px; height: 38px; }.sanctuary-nav { padding: 5px; }.site-footer { bottom: 12px; }.site-footer > span:last-child { font-size: 7px; }
+  .haven-dialog { max-height: calc(100svh - 24px); padding: 23px; }.dialog-emblem { margin-bottom: 16px; }.haven-dialog h2 { font-size: 29px; }.haven-dialog p { margin-bottom: 14px; }.toast { top: 63px; }
+  .incoming-kindness { margin-top: 8px; font-size: 8px; padding: 6px 9px; }
+}
+@media (max-width: 600px) and (max-height: 560px) { .intro > p { display: none; }.place-label { font-size: 7px; padding: 4px 6px; }.place-dot { width: 17px; height: 17px; } }
+@media (min-width: 601px) and (max-height: 520px) { .site-header { height: 60px; }.brand > span { font-size: 26px; }.intro { top: 100px; }h1 { font-size: 38px; margin-block: 12px; }.weather-control { top: 62px; }.bottom-hud { bottom: 42px; }.site-footer { bottom: 12px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

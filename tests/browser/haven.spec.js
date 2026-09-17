@@ -95,3 +95,43 @@ test('phone layout keeps controls accessible and dialogs inside viewport', async
   await page.getByRole('button', { name: 'About this sanctuary' }).click();
   await expect(page.getByRole('heading', { name: 'A softer place to land.' })).toBeVisible();
 });
+
+test('missing backend stops WebSocket retries and can recover without losing a typed thought', async ({ page }) => {
+  await page.clock.install();
+  const sockets = [];
+  page.on('websocket', socket => { if (new URL(socket.url()).pathname === '/ws') sockets.push(socket); });
+  let probes = 0;
+  await page.route('**/ws', async route => { probes++; await route.fulfill({ status: 200, contentType: 'text/html', body: '<html>Static Vercel fallback</html>' }); });
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Retry live connection' })).toBeVisible();
+  await page.clock.fastForward(60_000);
+  expect(sockets).toHaveLength(0);
+  expect(probes).toBeLessThanOrEqual(2); // Strict Mode may abort its first probe.
+  await page.getByRole('button', { name: 'Let go', exact: true }).click();
+  await page.getByLabel('A thought to release').fill('Keep this thought until the river returns');
+  await expect(page.getByRole('button', { name: 'Release this thought' })).toBeDisabled();
+  await page.unroute('**/ws');
+  await page.getByRole('button', { name: 'Try connecting again' }).click();
+  await expect(page.getByRole('button', { name: 'Release this thought' })).toBeEnabled();
+  await expect(page.getByLabel('A thought to release')).toHaveValue('Keep this thought until the river returns');
+  await page.getByRole('button', { name: 'Release this thought' }).click();
+  await expect(page.getByRole('status')).toContainText('Your lantern is on its way');
+});
+
+test('349 by 498 viewport keeps navigation onscreen without page overflow', async ({ page }) => {
+  await page.setViewportSize({ width: 349, height: 498 });
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: /Release a thought/ })).toBeVisible();
+  const dimensions = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, height: document.documentElement.scrollHeight, viewportWidth: innerWidth, viewportHeight: innerHeight }));
+  expect(dimensions.width).toBe(dimensions.viewportWidth);
+  expect(dimensions.height).toBe(dimensions.viewportHeight);
+  const navigation = await page.getByRole('navigation').boundingBox();
+  expect(navigation.y).toBeGreaterThan(0);
+  expect(navigation.y + navigation.height).toBeLessThanOrEqual(498);
+  await page.getByRole('button', { name: 'Let go', exact: true }).click();
+  const dialog = await page.getByRole('dialog').boundingBox();
+  expect(dialog.y).toBeGreaterThanOrEqual(0);
+  expect(dialog.y + dialog.height).toBeLessThanOrEqual(498);
+  await page.getByRole('button', { name: 'Close dialog' }).click();
+  await page.screenshot({ path: 'artifacts/compact-mobile.png' });
+});

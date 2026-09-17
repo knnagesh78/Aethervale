@@ -86,3 +86,34 @@ test('health endpoint reveals no user metrics or identifiers', async t => {
   assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
   assert.equal(response.headers.get('set-cookie'), null);
 });
+
+test('Vercel API path serves a capability probe and upgrades to a real live connection', async t => {
+  const haven = await setup(t, { serveStatic: false, trustProxy: true });
+  for (const route of ['/ws', '/api/ws']) {
+    const response = await fetch(haven.origin + route);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.deepEqual(await response.json(), { status: 'ok', service: 'echo-haven', protocol: 1 });
+  }
+  assert.equal((await fetch(haven.origin + '/')).status, 404, 'function does not serve static files');
+  const a = client(haven.url.replace('/ws', '/api/ws'), { origin: 'https://aethervale-mu.vercel.app', headers: { 'x-forwarded-host': 'aethervale-mu.vercel.app' } });
+  await a.wait(m => m.type === 'welcome');
+  a.send({ type: 'release', requestId: 'vercel-lantern' });
+  assert.equal((await a.wait(m => m.type === 'released')).requestId, 'vercel-lantern');
+});
+
+test('standalone server does not trust a spoofed forwarded host', async t => {
+  const haven = await setup(t);
+  const rejected = new WebSocket(haven.url, { origin: 'https://untrusted.example', headers: { 'x-forwarded-host': 'untrusted.example' } });
+  await new Promise(resolve => rejected.on('error', resolve));
+});
+
+test('Vercel entry exports an unstarted HTTP server that serves the real protocol', async t => {
+  const { default: server } = await import('../api/ws.js');
+  assert.equal(server.listening, false);
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  const a = client(`ws://127.0.0.1:${port}/api/ws`);
+  t.after(async () => { a.socket.terminate(); await new Promise(resolve => server.close(resolve)); });
+  await a.wait(m => m.type === 'welcome');
+  assert.equal((await a.wait(m => m.type === 'presence')).count, 1);
+});

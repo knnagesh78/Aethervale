@@ -47,9 +47,14 @@ src/
     useStillness.js             Visible-tab idle detection and permanent session blooms
     useSoundscape.js            Procedural ambient audio and audio lifecycle
   lib/sanctuary.js               Shared lifetimes, bounds, deterministic helpers
+  lib/connection.js              Endpoint validation and bounded retry policy
 server/
   WebSocketServer.js             Static production host and anonymous live protocol
+api/
+  ws.js                         Vercel HTTP server export for live connections
+vercel.json                     Existing-domain routing and function configuration
 tests/
+  connection.test.js            Secure endpoint URLs and deployment capability checks
   server.test.js                Multi-client integration, origin/payload/rate limits
   sanctuary.test.js             Idle thresholds, camera bounds, path and seed checks
   browser/haven.spec.js         Desktop/mobile end-to-end interaction and privacy
@@ -67,7 +72,22 @@ The server limits payloads to 1 KB, messages to 40 per minute per connection, re
 
 ## Production deployment
 
-Build once, then run `npm start`. The Node server serves `dist/`, `/health`, and `/ws` from one origin. Use a WebSocket-capable host with a long-running Node process. Static-only hosting does not provide shared co-presence. `npm run preview` previews the client only; use `npm start` to test a full production deployment.
+### Existing Vercel project and domain
+
+Keep the existing **aethervale-mu.vercel.app** project and any custom domain already attached to it. The repository now includes `api/ws.js`, an exported HTTP server for Vercel Functions, and `vercel.json`, which enables Fluid Compute and routes `/ws` to that function. Vercel supports WebSockets with Fluid Compute; see the [official WebSocket documentation](https://vercel.com/docs/functions/websockets).
+
+1. Push these changes to the Git branch connected to the existing Vercel project and let Vercel redeploy it. No new project or domain is needed.
+2. The checked-in settings select Vite, `npm run build`, and the `dist` output folder. The function starts through its server export; **do not** use `npm start` as the Vercel build command.
+3. Leave `VITE_WS_URL` unset for this same-domain deployment. Remove any old localhost or unrelated backend override and redeploy if one is set. If `ALLOWED_ORIGINS` is configured, include `https://aethervale-mu.vercel.app` and each intended custom/preview origin exactly.
+4. After deployment, open `https://aethervale-mu.vercel.app/ws`. It must return JSON containing `service: "echo-haven"` and `protocol: 1`, not the app HTML or a 404 page. Browser WebSocket requests to the same `/ws` URL should upgrade with status 101, and the app should show “Here, together. Quietly.”
+
+The function duration is 300 seconds. The client reconnects and reloads the river when a healthy connection closes. Failed upgrades use bounded backoff, and an unavailable endpoint displays a manual Retry action. A preflight check prevents endless WebSocket attempts against a static HTML page; typed thoughts stay in the open dialog while reconnecting, and releasing is enabled only after the server handshake succeeds.
+
+**Shared-state limitation:** Vercel may route visitors or reconnects to different function instances. This server's in-memory river is shared only by visitors on the same instance. A single global river and global presence across instances require an external state/pub-sub adapter such as Redis; this patch adds the missing endpoint but does not configure or provision an external database. For one guaranteed shared river without that adapter, run the included standalone server and point `VITE_WS_URL` to it while keeping the website and domain on Vercel.
+
+### Standalone Node or Docker hosting
+
+Build once, then run `npm start`. The Node server serves `dist/`, `/health`, and `/ws` from one origin. `npm run preview` previews the client only; use `npm start` to test a full production deployment. For Vercel, use the function deployment above.
 
 Set environment variables through your host or shell (the `.env.example` file documents them):
 
